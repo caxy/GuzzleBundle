@@ -7,6 +7,7 @@
     <services>
         <service id="data_collector.guzzle" class="Playbloom\Bundle\GuzzleBundle\DataCollector\GuzzleDataCollector">
             <argument type="service" id="playbloom_guzzle.client.plugin.profiler"/>
+            <argument type="service" id="playbloom_guzzle.timer.data"/>
             <tag name="data_collector"
                 template="PlaybloomGuzzleBundle:Collector:guzzle"
                 id="guzzle"/>

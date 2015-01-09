@@ -2,13 +2,13 @@
 
 namespace Playbloom\Bundle\GuzzleBundle\DataCollector;
 
-use Guzzle\Plugin\History\HistoryPlugin;
+use GuzzleHttp\Subscriber\History;
 
-use Guzzle\Http\Message\RequestInterface as GuzzleRequestInterface;
+use GuzzleHttp\Message\RequestInterface as GuzzleRequestInterface;
+use GuzzleHttp\Message\ResponseInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\DataCollector\DataCollector;
-use Guzzle\Http\Message\EntityEnclosingRequestInterface;
 
 /**
  * GuzzleDataCollector.
@@ -18,10 +18,12 @@ use Guzzle\Http\Message\EntityEnclosingRequestInterface;
 class GuzzleDataCollector extends DataCollector
 {
     private $profiler;
+    private $storage;
 
-    public function __construct(HistoryPlugin $profiler)
+    public function __construct(History $profiler, \SplObjectStorage $storage)
     {
         $this->profiler = $profiler;
+        $this->storage = $storage;
     }
 
     /**
@@ -57,10 +59,10 @@ class GuzzleDataCollector extends DataCollector
         };
 
         foreach ($this->profiler as $call) {
-            $request = $this->collectRequest($call);
-            $response = $this->collectResponse($call);
-            $time = $this->collectTime($call);
-            $error = $call->getResponse()->isError();
+            $request = $this->collectRequest($call['request']);
+            $response = $this->collectResponse($call['response']);
+            $time = $this->collectTime($call['response']);
+            $error = $this->isError($call['response']);
 
             $aggregate($request, $response, $time, $error);
 
@@ -118,16 +120,13 @@ class GuzzleDataCollector extends DataCollector
     /**
      * Collect & sanitize data about a Guzzle request
      *
-     * @param Guzzle\Http\Message\RequestInterface $request
+     * @param \GuzzleHttp\Message\RequestInterface $request
      *
      * @return array
      */
     private function collectRequest(GuzzleRequestInterface $request)
     {
-        $body = null;
-        if ($request instanceof EntityEnclosingRequestInterface) {
-            $body = (string) $request->getBody();
-        }
+        $body = (string) $request->getBody();
 
         return array(
             'headers' => $request->getHeaders(),
@@ -135,7 +134,7 @@ class GuzzleDataCollector extends DataCollector
             'scheme'  => $request->getScheme(),
             'host'    => $request->getHost(),
             'path'    => $request->getPath(),
-            'query'   => $request->getQuery(),
+            'query'   => (string) $request->getQuery(),
             'body'    => $body
         );
     }
@@ -143,14 +142,13 @@ class GuzzleDataCollector extends DataCollector
     /**
      * Collect & sanitize data about a Guzzle response
      *
-     * @param Guzzle\Http\Message\RequestInterface $request
+     * @param ResponseInterface $response
      *
      * @return array
      */
-    private function collectResponse(GuzzleRequestInterface $request)
+    private function collectResponse(ResponseInterface $response)
     {
-        $response = $request->getResponse();
-        $body = $response->getBody(true);
+        $body = (string) $response->getBody();
 
         return array(
             'statusCode'   => $response->getStatusCode(),
@@ -163,17 +161,48 @@ class GuzzleDataCollector extends DataCollector
     /**
      * Collect time for a Guzzle request
      *
-     * @param Guzzle\Http\Message\RequestInterface $request
+     * @param \GuzzleHttp\Message\ResponseInterface $response
      *
      * @return array
      */
-    private function collectTime(GuzzleRequestInterface $request)
+    private function collectTime(ResponseInterface $response)
     {
-        $response = $request->getResponse();
+        return $this->storage->offsetGet($response);
+    }
 
-        return array(
-            'total'      => $response->getInfo('total_time'),
-            'connection' => $response->getInfo('connect_time')
-        );
+    /**
+     * Checks if HTTP Status code is a Client Error (4xx)
+     *
+     * @param \GuzzleHttp\Message\ResponseInterface $response
+     *
+     * @return bool
+     */
+    private function isClientError(ResponseInterface $response)
+    {
+        return $response->getStatusCode() >= 400 && $response->getStatusCode() < 500;
+    }
+
+    /**
+     * Checks if HTTP Status code is Server OR Client Error (4xx or 5xx)
+     *
+     * @param \GuzzleHttp\Message\ResponseInterface $response
+     *
+     * @return boolean
+     */
+    private function isError(ResponseInterface $response)
+    {
+        return $this->isClientError($response) || $this->isServerError($response);
+    }
+
+    /**
+     * Checks if HTTP Status code is Server Error (5xx)
+     *
+     * @param \GuzzleHttp\Message\ResponseInterface $response
+     *
+     * @return bool
+     */
+    private function isServerError(ResponseInterface $response)
+    {
+        return $response->getStatusCode() >= 500 && $response->getStatusCode() < 600;
     }
 }

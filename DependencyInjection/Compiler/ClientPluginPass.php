@@ -21,7 +21,7 @@ class ClientPluginPass implements CompilerPassInterface
      */
     public function process(ContainerBuilder $container)
     {
-        $clients = $container->findTaggedServiceIds('playbloom_guzzle.client');
+        $clients = $container->findTaggedServiceIds('playbloom_guzzle.emitter');
 
         if (empty($clients)) {
             return;
@@ -36,7 +36,7 @@ class ClientPluginPass implements CompilerPassInterface
 
             if ($container->hasDefinition('profiler')) {
                 $clientDefinition->addMethodCall(
-                    'addSubscriber',
+                    'attach',
                     array(new Reference('playbloom_guzzle.client.plugin.profiler'))
                 );
             }
@@ -53,7 +53,7 @@ class ClientPluginPass implements CompilerPassInterface
     {
         foreach ($plugins as $pluginId => $attributes) {
             $clientDefinition->addMethodCall(
-                'addSubscriber',
+                'attach',
                 array(new Reference($pluginId))
             );
         }

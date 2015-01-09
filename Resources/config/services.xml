@@ -5,21 +5,23 @@
     xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
 
     <services>
-        <service id="playbloom_guzzle.client.plugin.logger" class="Guzzle\Plugin\Log\LogPlugin" public="true">
-            <argument type="service" id="playbloom_guzzle.client.plugin.logger_adapter"/>
+        <service id="playbloom_guzzle.client.plugin.logger" class="GuzzleHttp\Subscriber\Log\LogSubscriber" public="true">
+            <argument type="service" id="logger"/>
             <argument>Requested "{host}" {method} "{resource}"</argument>
+            <tag name="playbloom_guzzle.client.plugin" />
+            <tag name="monolog.logger" channel="guzzle" />
+        </service>
+
+        <service id="playbloom_guzzle.client.plugin.timer" class="Playbloom\Bundle\GuzzleBundle\Subscriber\StopwatchSubscriber" public="true">
+            <argument type="service" id="playbloom_guzzle.timer.data"/>
             <tag name="playbloom_guzzle.client.plugin" />
         </service>
 
-        <service id="playbloom_guzzle.client.plugin.logger_adapter" class="Guzzle\Log\MonologLogAdapter" public="false">
-            <tag name="monolog.logger" channel="guzzle" />
-            <argument type="service" id="logger"/>
+        <service id="playbloom_guzzle.timer.data" class="SplObjectStorage" public="true">
         </service>
 
-        <service id="playbloom_guzzle.client.plugin.profiler" class="Guzzle\Plugin\History\HistoryPlugin" public="true">
-            <call method="setLimit">
-                <argument>100</argument>
-            </call>
+        <service id="playbloom_guzzle.client.plugin.profiler" class="GuzzleHttp\Subscriber\History" public="true">
+            <argument>100</argument>
         </service>
     </services>
 
