@@ -167,7 +167,7 @@ class GuzzleDataCollector extends DataCollector
      */
     private function collectTime(ResponseInterface $response)
     {
-        return $this->storage->offsetGet($response);
+        return $this->storage->offsetExists($response) ? $this->storage->offsetGet($response) : array('total' => 0, 'connection' => 0);
     }
 
     /**
