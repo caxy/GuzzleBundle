@@ -133,6 +133,7 @@ class GuzzleDataCollector extends DataCollector
             'method'  => $request->getMethod(),
             'scheme'  => $request->getScheme(),
             'host'    => $request->getHost(),
+	    'port'    => $request->getPort(),
             'path'    => $request->getPath(),
             'query'   => (string) $request->getQuery(),
             'body'    => $body
